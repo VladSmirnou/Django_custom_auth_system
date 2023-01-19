@@ -1,0 +1,29 @@
+<form method="POST" action="{% url 'login' %}" autocomplete="off">
+    {% csrf_token %}    
+
+    {% if messages %}
+    
+        {% for message in messages %}
+            {{ message }}
+        {% endfor %}
+
+    {% endif %}
+
+    {{ form.non_field_errors }}
+
+    {% comment %} fix username to email {% endcomment %}
+    <div class="fieldWrapper">
+        {{ form.username.errors }}
+        <label for="{{ form.username.id_for_label }}">Email:</label>
+        {{ form.username }}
+    </div>
+
+    <div class="fieldWrapper">
+        {{ form.password.errors }}
+        <label for="{{ form.password.id_for_label }}">Password:</label>
+        {{ form.password }}
+    </div>
+    
+    <button type="submit" class="btn btn-success mt-2">Login</button>
+</form>
+<a href="{% url 'home' %}">Home page</a>
