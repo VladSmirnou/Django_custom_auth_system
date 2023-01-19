@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+{% if user.is_authenticated %}
+    
+    {% comment %}
+        here i tried to implement a timer for a user session,
+        but it doesn't work properly yet
+    {% endcomment %}
+        
+    <div onload="updateCountdown()">
+        Session expires after: <span id="countdown"></span>
+        <script type="text/javascript">
+            const startingminutes = 10;
+            let time = startingminutes * 60
+
+            const countdownEL = document.getElementById('countdown');
+            setInterval(updateCountdown, 1000)
+            function updateCountdown(){
+                const minutes = Math.floor(time / 60);
+                let seconds = time % 60
+                seconds = seconds < 10 ? '0' + seconds : seconds;
+                countdownEL.innerHTML = `${minutes}: ${seconds}`;
+                time--;
+            }
+        </script>
+    </div>
+    
+    {% if messages %}
+        {% for message in messages %}
+            {{ message }}   
+        {% endfor %}
+    {% endif %}
+
+    {% if context %}
+        {% for title in context %}
+           {{ title.title|urlize }}
+        {% endfor %}
+    {% endif %}
+
+    <p>Hi {{ user.username }}</p>
+    <p>Your email: {{ user.email }}</p>
+
+    <a href="{% url 'password-change' %}">Change password</a>
+
+    <p>In case you forgot your password -></p>
+    <p><a href="{% url 'password-reset' %}">Reset password</a></p>
+
+    <p><a href="{% url 'logout' %}">Log out</a></p>
+    
+{% else %}
+
+    <h3>Home page</h3>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <p><a href="{% url 'login' %}">Log in</a></p>
+
+    <p><a href="{% url 'signup' %}">Sign up</a></p>
+
+    <p>In case you forgot your password -></p>
+    <p><a href="{% url 'password-reset' %}">Reset password</a></p>
+
+{% endif %}
+</body>
+</html>

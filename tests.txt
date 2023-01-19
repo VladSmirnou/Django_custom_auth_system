@@ -1,0 +1,154 @@
+Url name -> home
+    
+    Purpose ->
+        
+        Renders a home page to every user
+
+    Actions ->
+
+        1) Get this page as an authenticated and not authenticated user
+
+
+Url name -> signup
+        
+        Actions ->
+
+            1) 
+
+
+Url name -> login
+
+    Purpose ->
+        
+        Login a user into a system. A user that is already authenticated
+        shouln't be able to get this page (for example, via direct url that a user may save).
+        Error message should not provide any specific info about what was wrong
+        (should say that the password AND email was wrong, even if it was only one of them),
+        so a user can't guess them separately
+
+    Actions ->
+
+        1) Test if already authenticated user can get this page
+
+        2) Test error messages
+
+
+Url name -> logout
+
+    Purpose ->
+        
+        Logout a user that is authenticated
+
+    Actions ->
+
+        1) Test if not authenticated user can get this page
+
+
+Url name -> password-change
+
+    Purpose ->
+                
+        Changes authenticated user password if it knows its old one. Errors
+        can explicitly say to a user what was wrong, so the default errors are fine
+
+    Actions ->
+
+        1) Test if not authenticated user can get this page
+
+        2) Test if its possible to get the home page without login (via direct url | 'go to previous page' arrow | refresh)
+        to a user that has changed its password 
+                
+        3) Test errors
+
+
+Url name -> password-change-done
+
+    Purpose ->
+
+        Just an info page
+
+
+Url name -> password-reset
+
+    Purpose ->
+
+        Changes user password if it doesn't know its old one.
+        Every user should be able to get this page, cus a user can be logged in, but
+        has forgotten its password, so it might be afraid to log out to reset it. If 
+        something went wrong, it wouldn't log out.
+
+        User may dont reset its password and its session will have invadil token since then. If it tries to
+        reset its password again i need to test if this function won't error out and correctly update the keys
+
+    Actions ->
+
+        1) Test if it sends an email to a correct user
+
+
+Url name -> password-rest-done
+
+    Purpose ->
+
+        Just an info page. Should be available to not authenticated users
+
+
+Url name -> password_reset_confirm/<uidb64>/<token>/
+
+    Purpose ->
+
+        First line of user credentials verification. Accepts uidb and token, so i can free the next view,
+        url and the template from those parameters.
+
+        User may send two or more password reset links. All of them are valid. I need to check if after
+        a user used one of them the rest would be invalid
+
+    Actions -> 
+
+        1) Test hardcoded random uidb64 and tokens directly in the Url
+
+        2) Test if a link actually expires after given amount of time
+
+        3) Test if a user send two or more password reset links. All of those links are valid. I need to check if after
+        a user used one of them the rest would be invalid
+
+        4) Test if a user with no data gets a proper error
+
+Url name -> password_reset_complete
+
+    Purpose ->
+
+        Renders the password change form to a user. Must assept two request types POST and GET,
+        because a user may refresh the page with a form, or went to a home page, closed the browser, tab,
+        internet problems, etc., and wants to go back by clicking the link or typing direct url. 
+        Must check if a token still valid per every request.
+
+    Actions ->
+
+        1) Test if a Refered header doesn't expose a token
+        
+        2) Test if there is no token as a path in the DevTools or in the URL bar
+
+        3) Test if a user actually logged out (if it was logged in)
+        after a password cnahge and cant get any page back
+
+        4) Test if a user clicked a link and didn't do anyhthing, so a token is expired in the GET
+        fork (it shouldn't get this page again and must be redirected to a home page)
+
+        5) Test if a user clicked a link and submitted incorrect form, but then closed tab and opened again
+        (it should be able to continue with the same form)
+        
+        6) Test if a user submitted incorrect form and didn't do anyhthing in POST fork until a token is expired
+        (it shouldn't be able to submit the form again and must be redirected to a home page)
+
+        7) Test if a user opened two tabs with the same link and didn't do anything so a token is expired.
+        Both tabs in the GET fork. (it shouldn't be able to get this page on both tabs after the token is expired.
+        on the first tab it must be redirected to a home page, the second one is 404)
+
+        8) Test if a user opened two tabs, submitted incorrect forms from both of them 
+        and didn't do anything until a token expired. (it shouldn't be able to submit the form
+        from both tabs after the token is expired.
+        on the first tab it must be redirected to a home page, the second one is 404)
+
+        9) Test if a user opened two tabs and submitted the correct form from one of them.
+        (it shouldn't be able to submit the form from the remaining tab, it shouldn be able to
+        GET this tab again, must get 404)
