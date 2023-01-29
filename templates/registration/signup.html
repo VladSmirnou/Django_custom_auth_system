@@ -15,6 +15,12 @@
     </div>
 
     <div class="fieldWrapper">
+        {{ form.personal_info.errors }}
+        <label for="{{ form.personal_info.id_for_label }}">Your first pet name:</label>
+        {{ form.personal_info }} Remember this info, you'll need it to reset your email
+    </div>
+
+    <div class="fieldWrapper">
         {{ form.password1.errors }}
         <label for="{{ form.password1.id_for_label }}">Password:</label>
         {{ form.password1 }} 
@@ -28,5 +34,7 @@
 
     <input type="submit" value="Submit">
 </form>
+
 <a href="{% url 'password_security_check' %}">Check if your password is secure before submitting!</a>
+<p><a href="{% url 'bulk_password_security_check' %}">Or you can check 10 different passwords at the same time!</a></p>
 <p><a href="{% url 'home' %}">Home page</a></p>

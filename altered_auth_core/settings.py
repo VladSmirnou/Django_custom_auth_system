@@ -129,7 +129,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'altered_auth.CustomUser'
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+email = env.dj_email_url("EMAIL_URL", default="smtp://")
+DEFAULT_FROM_EMAIL = email["DEFAULT_FROM_EMAIL"]
+EMAIL_HOST = email["EMAIL_HOST"]
+EMAIL_PORT = email["EMAIL_PORT"]
+EMAIL_USE_TLS = email["EMAIL_USE_TLS"]
+EMAIL_HOST_USER = email["EMAIL_HOST_USER"]
+EMAIL_HOST_PASSWORD = email["EMAIL_HOST_PASSWORD"]
 
 PASSWORD_RESET_TIMEOUT = 1000
 
