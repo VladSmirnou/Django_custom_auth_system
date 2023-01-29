@@ -1,0 +1,21 @@
+<h3>Email reset page</h3>
+<p>Here you need to provide a PDF file that you were given during signup process.</p>
+<p>You personal data will be the same after email change.</p>
+<p>Your old password will be valid.</p>
+<p style="color: red;">Once you had submitted the file, your account would be deactivated until you verify your new email.</p>
+<p style="color: red;">Your current file will also be invalid.</p>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    {% if messages %}
+        <ul>
+        {% for message in messages %}
+            <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+        
+    {{ form.as_p }}
+    <button method="post">Submit</button>
+</form>
+<a href="{% url 'home' %}">home page</a>

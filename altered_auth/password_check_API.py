@@ -1,30 +1,28 @@
-import requests
-import hashlib
 import asyncio
+import hashlib
+
 import httpx
 
 # it's https://haveibeenpwned.com/ API, i'm using searching by range, 
 # because it doesn't use a raw password
 
 # How this API works ->
-# i send the first 5 characters of a hashed password (must be SHA1 hash) to the API,
+# I send the first 5 characters of a hashed password (must be SHA1 hash) to the API,
 # it returns a list of bytestrings, where those 5 characters match.
 # This list contains THE REMAINDER (my hashed password[5:]) of the hashed 
 # password and the amount of times this remainder was pwned, separated by a colon,
-# like -> 'HASH_REMAINDER:pwned_count'
+# like -> b'HASH_REMAINDER:pwned_count'
 # i need to check if there is a remainder in this list, that matches 
 # the tail of my hashed password [5:]. If it is, i need to get the amount of times it was
 # pwned.
 # API input is not case-sensitive, but output is always in upper case.
 
-
 def simple_password_check(password):
-
     hashed_password = hashlib.sha1(password.encode('utf-8')).hexdigest().upper()
     first_five_chars, remainder = hashed_password[:5], hashed_password[5:]
 
     url = f'https://api.pwnedpasswords.com/range/{first_five_chars}'
-    res = requests.get(url)
+    res = httpx.get(url)
 
     if res.status_code != 200:
         # i need to return something except int(500) here, because there is can be a password
@@ -40,10 +38,13 @@ def simple_password_check(password):
 
 
 async def bulk_password_check(list_of_first_chars):
-
     async with httpx.AsyncClient() as client:
         tasks = (client.get(f'https://api.pwnedpasswords.com/range/{hashes}') for hashes in list_of_first_chars)
-        res = await asyncio.gather(*tasks)
+        try:
+            # need to apply a timer here, because if there is no responce, this view will end up in a dead lock
+            res = await asyncio.wait_for(asyncio.gather(*tasks), 3)
+        except asyncio.TimeoutError:
+            yield 500
 
     for response in res:
         if response.status_code != 200:

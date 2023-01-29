@@ -1,13 +1,13 @@
-from django.test import SimpleTestCase
 import re
 import random
 import string
 
+from django.test import SimpleTestCase
+
 
 class FormTests(SimpleTestCase):
-
     def test_email_regex(self):
-        TLD_SUCC = ['@gmail.com', '@yandex.ru']
+        TLD_SUCC = ['@gmail.com']
         TLD_FAIL = [
             '@yahoo.com',
             '@email.com',
@@ -21,7 +21,7 @@ class FormTests(SimpleTestCase):
 
         letters = string.ascii_letters
         digits = string.digits
-        pattern = re.compile(r'[a-zA-Z\d]{5,50}(@gmail.com|@yandex.ru)')
+        pattern = re.compile(r'[a-zA-Z\d]{5,50}@gmail.com')
 
         # all_right
         for i in TLD_SUCC:

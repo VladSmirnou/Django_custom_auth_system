@@ -1,0 +1,14 @@
+{% autoescape off %}
+
+Click the link below to verify your email address.
+
+{{ protocol }}://{{ domain }}{% url 'email_verification' uidb64=uid token=token %}
+
+You also received a PDF document, that contains some text. This file is the only way to restore your account if you loose
+this email address. So save it and don't show to anyone!
+
+If you did not make this request, you can simply ignore this email.
+
+The Website Team
+
+{% endautoescape %}

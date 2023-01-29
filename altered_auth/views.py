@@ -1,32 +1,33 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, logout
-from django.views.generic import CreateView
-from .forms import CustomUserCreationForm, PasswordCheckForm, BulkPasswordCheckForm
-from django.urls import reverse_lazy
+import asyncio
+import threading
+
+from django_ratelimit.decorators import ratelimit, Ratelimited
+
+from django.core.exceptions import ValidationError
+from django.contrib import messages
+from django.contrib.auth import login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import (
     AuthenticationForm, 
     PasswordChangeForm, 
     PasswordResetForm,
     SetPasswordForm,
-    # UserCreationForm 
-    )
-from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
-from django.contrib import messages
+)
+from django.http import Http404, HttpResponseForbidden
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils.http import urlsafe_base64_decode
-from django.contrib.auth.tokens import default_token_generator
-from altered_auth_core import settings
-from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.views.decorators.http import require_http_methods
-from .support import cleaner, token_exists
 from django.views.decorators.csrf import csrf_exempt
-from django.core.exceptions import ValidationError
-from .password_check_API import main, simple_password_check
-import time
-from django_ratelimit.decorators import ratelimit, Ratelimited
-import asyncio
 
+from altered_auth_core import settings
+from .forms import CustomUserCreationForm, PasswordCheckForm, BulkPasswordCheckForm, UploadFileForm, UploadFileForm
+from .password_check_API import main, simple_password_check
+from .support import cleaner, token_exists, email_sender, link_check, assert_user_credentials
+
+
+lock = threading.Lock()
 
 @require_http_methods(['GET'])
 def home_page(request):
@@ -34,11 +35,22 @@ def home_page(request):
 
 
 # maybe, if i have time, i'll rewrite this one by myself, with a password hashing, etc.
-class SignUpView(CreateView):
-    # Only not authenticated users can access.
-    form_class = CustomUserCreationForm
-    success_url = reverse_lazy('login')
-    template_name = 'registration/signup.html'
+def signup_view(request):
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            user = get_user_model().objects.get(email=form.cleaned_data.get('email'))
+            email_sender(request, user)
+            return redirect('email_success')
+    else:
+        form = CustomUserCreationForm()
+
+    return render(request, 'registration/signup.html', {'form': form})
+
+
+def email_success(request):
+    return render(request, 'registration/email_success.html')
 
 
 @require_http_methods(['GET', 'POST'])
@@ -84,7 +96,7 @@ def password_change(request):
         form = PasswordChangeForm(user=request.user, data=request.POST)
         if form.is_valid():
             form.save()
-            return redirect('password-change-done')
+            return redirect('password_change_done')
 
     else:
         form = PasswordChangeForm(user=request.user)
@@ -118,7 +130,7 @@ def password_reset(request):
                 use_https=True if request.is_secure() else False,
                 request=request
             )
-            return redirect('password-reset-done')
+            return redirect('password_reset_done')
     
     form = PasswordResetForm()
 
@@ -137,16 +149,13 @@ def password_reset_done(request):
 
 @require_http_methods(['GET'])
 def password_reset_confirm(request, uidb64, token):
-    try:
-        uid = urlsafe_base64_decode(uidb64).decode()
-        user = get_user_model().objects.get(pk=uid)
-    except:
-        user = None
-    if user is not None and default_token_generator.check_token(user, token):
+
+    if link_check(uidb64, token):
+        # Seems like every user, even if it is an anonymous user,
+        # has its own session object, so there is no shared data
         request.session['encoded_user'] = uidb64
         request.session['token'] = token
         return redirect('password_reset_complete')
-
     # this 'try' block cleanes old session token and uid. 
     # It is not rly neccessary, but i wanna make sure that
     # there is no stale data flying around
@@ -247,39 +256,81 @@ def password_security_check(request):
 @csrf_exempt
 @ratelimit(key='user_or_ip', rate='1/m', method=['POST'])
 def bulk_password_security_check(request):
-    pwned_passwords = {}
-    if request.method == 'POST':
-        form = BulkPasswordCheckForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            for password in list(data):
-                try:
-                    validate_password(data[password])
-                except ValidationError as err: 
-                    form.add_error(password, err)
-            if not form.errors:
-                start = time.time()
-                if isinstance(values:= asyncio.run(main(data.values())), dict):
-                    pwned_passwords = values
-                    if not pwned_passwords:
-                        messages.success(request, 'Congrats! All passwords are solid.')
-                else: 
-                    messages.error(request,
-                    'Server is currently unavailable.' if values == 500 else 'There is a copy or copies in your passwords, \
-                        all passwords must be unique.'
-                )
-                end = time.time()
-                print(end - start)
+    # i actually didn't know that developer server is now
+    # multi-threaded and fn-based view is not thread safe
+    with lock:
+        # because of this dictionary i need to use lock here, or i need to
+        # implement 'return render' two times in POST and GET
+        pwned_passwords = {}
+        if request.method == 'POST':
+            form = BulkPasswordCheckForm(request.POST)
+            if form.is_valid():
+                data = form.cleaned_data
+                for password in list(data):
+                    try:
+                        validate_password(data[password])
+                    except ValidationError as err: 
+                        form.add_error(password, err)
+                if not form.errors:
+                    if isinstance(values:= asyncio.run(main(data.values())), dict):
+                        pwned_passwords = values
+                        if not pwned_passwords:
+                            messages.success(request, 'Congrats! All passwords are solid.')
+                    else:
+                        messages.error(request,
+                        'Server is currently unavailable.' if values == 500 else 'There is a copy or copies in your passwords, \
+                            all passwords must be unique.'
+                        )
+        else:
+            form = BulkPasswordCheckForm()
+            
+        return render(
+            request,
+            'password_check_feature/bulk_password_check_form.html', {
+                'form': form,
+                'pwned_passwords': pwned_passwords or None
+                }
+            )
 
+
+@require_http_methods(['GET', 'POST'])
+def email_reset(request):
+    if request.method == 'POST':
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            # This is kinda scary to read a file from a user ngl
+            file = request.FILES['file']
+            personal_info = form.cleaned_data.get('your_first_pet_name')
+            # i don't think that i need to check if a user typed the same email that it forgot.
+            # I can allow that change
+            if user:= assert_user_credentials(file, personal_info):
+                user.is_active = False
+                user.email = form.cleaned_data.get('new_email_address')
+                user.useremailrestorationdata.delete()
+                user.save()
+                email_sender(request, user)
+                return redirect('email_reset_done')
+            messages.error(request, 'Token is no longer valid' )
+    else:   
+        form = UploadFileForm()
+
+    return render(request, 'email_reset/file_upload.html', {'form': form})
+
+
+def email_reset_done(request):
+    return render(request, 'email_reset/email_reset_done.html')
+
+
+@require_http_methods(['GET'])
+def email_verification(request, uidb64, token):
+    if user:= link_check(uidb64, token, email_ver=True):
+        user.is_active = True
+        user.save()
+        messages.success(request, 'You\'ve confirmed your email, you are now able to login!')
+        return redirect('login')
     else:
-        form = BulkPasswordCheckForm()
-    return render(
-        request,
-        'password_check_feature/bulk_password_check_form.html', {
-            'form': form,
-            'pwned_passwords': pwned_passwords or None
-            }
-        )
+        messages.error(request, 'Activation link is invalid. Try again')
+    return redirect('home')
 
 
 def handler403(request, exception=None):

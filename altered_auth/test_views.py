@@ -1,23 +1,24 @@
-from django.test import TestCase
-from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.contrib.auth.forms import AuthenticationForm
 from django.core import mail
 from django.contrib.auth.tokens import default_token_generator
+from django.test import TestCase
+from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 
 
 # Some of those tests are not rly neccessary, but i wanna train unittests
 class EndpointTest(TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.user = get_user_model().objects.create_user(
             username='my_test_user',
             email='my_test_email@gmail.com',
-            password='5555aaaa'
+            password='5555aaaa',
+            personal_info='kat',
+            is_active=True
         )
 
     @classmethod
