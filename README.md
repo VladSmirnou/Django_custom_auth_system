@@ -5,16 +5,22 @@ The main puprose is to understand on a bit lower level how Django auth system wa
 
 ## Installation
 ```
-Install requirements.txt
-Set environment variables from .env-template
-Migrate DB 
-Smtp backend is enabled by default, so change it first if you don't want to send a real email
+Manually:
+  Install requirements.txt
+  Set environment variables from .env-template
+  Migrate DB 
+  Smtp backend is enabled by default, so change it first if you don't want to send a real email
+  PostgreSQL backends activated by default, comment it out and uncomment SQLite backends if you want to
+Docker compose:
+  Set environment variables from .env-template
+  Run docker compose command
 ```
 ## Features 
 ```
 User signs up with an email instead of a username
 User can check if its password(s) was pwned or not
 User can reset its email without knowing the old one
+Docker compose support
 ```
 ## Features review
 - For the password check I'm using https://haveibeenpwned.com/ API. A user can check
