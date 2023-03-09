@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  django-serv:
+    build: .
+    command: bash -c "pip install -r requirements.txt &&
+        python3 manage.py makemigrations altered_auth &&
+        python3 manage.py migrate &&
+        python3 manage.py runserver 0.0.0.0:8000"
+    ports:
+      - 8000:8000
+      - 587:587
+      - 443:443 
+    env_file:
+      - .env
+    depends_on:
+      postgres-serv:
+        condition: service_healthy
+
+  postgres-serv:
+    image: postgres:latest
+    environment: 
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - postgres-volume:/var/lib/postgresql/data
+
+volumes:
+  postgres-volume:
