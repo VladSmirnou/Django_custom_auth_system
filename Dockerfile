@@ -5,8 +5,8 @@ WORKDIR /django/app
 COPY . /django/app
 
 EXPOSE 8000
-EXPOSE 587
-EXPOSE 443
+# I genuinely thought that a container cannot
+# use host ports for those requests
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
