@@ -8,8 +8,8 @@ services:
         python3 manage.py runserver 0.0.0.0:8000"
     ports:
       - 8000:8000
-      - 587:587
-      - 443:443 
+      # I genuinely thought that a container cannot
+      # use host ports for those requests
     env_file:
       - .env
     depends_on:
